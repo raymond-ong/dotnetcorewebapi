@@ -97,17 +97,55 @@ namespace Accessors
 
         public Dictionary<string, object> queryData(RequestData request)
         {
+            if (request.Groupings.Count == 1)
+            {
+                return GenerateDataByVendor();
+            }
+
             if (request.Groupings.Count == 2)
             {
-                return GenerateDummyPieChartData();
+                return GenerateDummyPieChartData(request);
             }
             
             if (request.Groupings.Count == 3)
             {
-                return GenerateDummyBarChartData();
+                return GenerateDummyBarChartData(request);
             }
 
             return null;
+        }
+
+        private Dictionary<string, object> GenerateDataByVendor()
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+            foreach (var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+                int total = 0;
+                List<string> models = kvp.Value;
+                foreach (string model in models)
+                {
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    
+                    foreach (var kvpStatus in statusDict)
+                    {
+                        total += kvpStatus.Value;
+                    }
+
+                    dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Vendor",  vendor}, { "count", total}
+                        });
+                }
+            }
+
+            retDict["data"] = dataList;
+
+            return retDict;
         }
 
         private Dictionary<string, object> GenerateDummyPieChartDataSimple()
@@ -126,7 +164,7 @@ namespace Accessors
             return retDict;
         }
 
-        private Dictionary<string, object> GenerateDummyPieChartData()
+        private Dictionary<string, object> GenerateDummyPieChartData(RequestData request)
         {
             Dictionary<string, object> retDict = new Dictionary<string, object>();
             Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
@@ -137,12 +175,34 @@ namespace Accessors
             {
                 string vendor = kvp.Key;
                 List<string> models = kvp.Value;
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+
                 foreach (string model in models)
                 {
                     Dictionary<string, int> statusDict = modelStatusCount[model];
                     int total = 0;
+
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
                     foreach (var kvpStatus in statusDict)
                     {
+                        string kpiStaus = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != model)
+                        {
+                            continue;
+                        }
+
                         total += kvpStatus.Value;
                     }
 
@@ -185,7 +245,7 @@ namespace Accessors
             };
         }
 
-        private Dictionary<string, object> GenerateDummyBarChartData()
+        private Dictionary<string, object> GenerateDummyBarChartData(RequestData request)
         {
             /*
             Dictionary<string, List<string>> VendorModels = new Dictionary<string, List<string>>()
@@ -219,12 +279,32 @@ namespace Accessors
             {
                 string vendor = kvp.Key;
                 List<string> models = kvp.Value;
-                foreach(string model in models)
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
+                    continue;
+                }
+
+                foreach (string model in models)
+                {
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
                     Dictionary<string, int> statusDict = modelStatusCount[model];
                     foreach(var kvpStatus in statusDict)
                     {
                         string status = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != model)
+                        {
+                            continue;
+                        }
+
                         int count = kvpStatus.Value;
                         dataList.Add(new Dictionary<string, object>()
                         {
