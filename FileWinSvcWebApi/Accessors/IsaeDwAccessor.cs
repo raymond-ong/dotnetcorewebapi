@@ -97,7 +97,21 @@ namespace Accessors
 
         public Dictionary<string, object> queryData(RequestData request)
         {
-            // Dummy Pie chart Data
+            if (request.Groupings.Count == 2)
+            {
+                return GenerateDummyPieChartData();
+            }
+            
+            if (request.Groupings.Count == 3)
+            {
+                return GenerateDummyBarChartData();
+            }
+
+            return null;
+        }
+
+        private Dictionary<string, object> GenerateDummyPieChartDataSimple()
+        {
             Dictionary<string, object> retDict = new Dictionary<string, object>();
 
             retDict["data"] = new List<Dictionary<string, object>>() {
@@ -105,10 +119,125 @@ namespace Accessors
                 new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "EJA" }, { "count", 200} },
                 new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "YTA" }, { "count", 300} },
                 new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW001" }, { "count", 400} },
+                new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW002" }, { "count", 150} },
+                new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW003" }, { "count", 250} },
             };
 
             return retDict;
         }
+
+        private Dictionary<string, object> GenerateDummyPieChartData()
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+            foreach (var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+                List<string> models = kvp.Value;
+                foreach (string model in models)
+                {
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    int total = 0;
+                    foreach (var kvpStatus in statusDict)
+                    {
+                        total += kvpStatus.Value;
+                    }
+
+                    dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Vendor",  vendor}, {"Model", model}, { "count", total}
+                        });
+                }
+            }
+
+            retDict["data"] = dataList;
+
+            return retDict;
+        }
+
+        private Dictionary<string, List<string>> GetSampleVendorModelData()
+        {
+            return new Dictionary<string, List<string>>()
+            {
+                {"Yokogawa", new List<string>() { "EJA", "EJX", "YTA"} },
+                {"Honeywell", new List<string>() { "HW001", "HW002", "HW003", "HW004" } },
+                {"Fisher Controls", new List<string>() { "FC001", "FC002", "FC003" } },
+            };
+        }
+
+        private Dictionary<string, Dictionary<string, int>> GetSampleModelStatusCount()
+        {
+            return new Dictionary<string, Dictionary<string, int>>()
+            {
+                {"EJA", new Dictionary<string, int>(){ { "Normal", 400 },  { "Error", 200 }, { "Warning", 100}, { "Communication Error", 10} } },
+                {"EJX", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 210 }, { "Warning", 110}, { "Communication Error", 20} } },
+                {"YTA", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 220 }, { "Warning", 120 }, { "Communication Error", 30} } },
+                {"HW001", new Dictionary<string, int>(){ { "Normal", 500 },  { "Error", 230 }, { "Warning", 130 }, { "Communication Error", 40} } },
+                {"HW002", new Dictionary<string, int>(){ { "Normal", 600 },  { "Error", 240 }, { "Warning", 140 }, { "Communication Error", 50} } },
+                {"HW003", new Dictionary<string, int>(){ { "Normal", 550 },  { "Error", 250 }, { "Warning", 150 }, { "Communication Error", 50} } },
+                {"HW004", new Dictionary<string, int>(){ { "Normal", 450 },  { "Error", 260 }, { "Warning", 160 }, { "Communication Error", 60} } },
+                {"FC001", new Dictionary<string, int>(){ { "Normal", 350 },  { "Error", 270 }, { "Warning", 170 }, { "Communication Error", 70} } },
+                {"FC002", new Dictionary<string, int>(){ { "Normal", 200 },  { "Error", 280 }, { "Warning", 180 }, { "Communication Error", 80} } },
+                {"FC003", new Dictionary<string, int>(){ { "Normal", 100 },  { "Error", 290 }, { "Warning", 190 }, { "Communication Error", 90} } },
+            };
+        }
+
+        private Dictionary<string, object> GenerateDummyBarChartData()
+        {
+            /*
+            Dictionary<string, List<string>> VendorModels = new Dictionary<string, List<string>>()
+            {
+                {"Yokogawa", new List<string>() { "EJA", "EJX", "YTA"} },
+                {"Honeywell", new List<string>() { "HW001", "HW002", "HW003", "HW004" } },
+                {"Fisher Controls", new List<string>() { "FC001", "FC002", "FC003" } },
+            };
+
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = new Dictionary<string, Dictionary<string, int>>()
+            {
+                {"EJA", new Dictionary<string, int>(){ { "Normal", 400 },  { "Error", 200 }, { "Warning", 100}, { "Communication Error", 10} } },
+                {"EJX", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 210 }, { "Warning", 110}, { "Communication Error", 20} } },
+                {"YTA", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 220 }, { "Warning", 120 }, { "Communication Error", 30} } },
+                {"HW001", new Dictionary<string, int>(){ { "Normal", 500 },  { "Error", 230 }, { "Warning", 130 }, { "Communication Error", 40} } },
+                {"HW002", new Dictionary<string, int>(){ { "Normal", 600 },  { "Error", 240 }, { "Warning", 140 }, { "Communication Error", 50} } },
+                {"HW003", new Dictionary<string, int>(){ { "Normal", 550 },  { "Error", 250 }, { "Warning", 150 }, { "Communication Error", 50} } },
+                {"HW004", new Dictionary<string, int>(){ { "Normal", 450 },  { "Error", 260 }, { "Warning", 160 }, { "Communication Error", 60} } },
+                {"FC001", new Dictionary<string, int>(){ { "Normal", 350 },  { "Error", 270 }, { "Warning", 170 }, { "Communication Error", 70} } },
+                {"FC002", new Dictionary<string, int>(){ { "Normal", 200 },  { "Error", 280 }, { "Warning", 180 }, { "Communication Error", 80} } },
+                {"FC003", new Dictionary<string, int>(){ { "Normal", 100 },  { "Error", 290 }, { "Warning", 190 }, { "Communication Error", 90} } },
+            };
+            */
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            foreach(var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+                List<string> models = kvp.Value;
+                foreach(string model in models)
+                {
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    foreach(var kvpStatus in statusDict)
+                    {
+                        string status = kvpStatus.Key;
+                        int count = kvpStatus.Value;
+                        dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Vendor",  vendor}, {"Model", model}, { "PRM Device Status", status}, { "count", count}
+                        });
+                    }
+                }
+            }
+
+            retDict["data"] = dataList;
+            return retDict;
+        }
+
 
         public IsaeDwAccessor(string serverName)
         {

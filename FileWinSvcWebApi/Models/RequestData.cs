@@ -8,22 +8,19 @@ namespace IsaePrmDwApi.Models
 {
     public class RequestData
     {
-        public string HierarchyPath { get; set; }
+        public string RequestType { get; set; }
 
-        public List<string> Dimensions { get; set; }
+        public List<string> Groupings { get; set; }
 
-        // If Kpis is specified, ignore this
-        public List<string> KpiGroups { get; set; }
+        public string Granularity { get; set; }
 
-        // Optional: If empty, just follow KpiGroups
-        public List<KpiInfo> Kpis { get; set; }
+        // Filters
+        public List<RequestParam> RequestParams { get; set; }
 
         // For pagination
         public int startIndex { get; set; }
 
         public int size { get; set; }
 
-        public DateTime startDate { get; set; }
-        public DateTime endDate { get; set; }
     }
 }

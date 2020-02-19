@@ -100,6 +100,7 @@
     <Compile Include="Models\LayoutData.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="Models\RequestData.cs" />
+    <Compile Include="Models\RequestParam.cs" />
     <Compile Include="Models\TableProps.cs" />
     <Compile Include="OnlyLocalHostAttribute.cs" />
     <Compile Include="Program.cs" />
