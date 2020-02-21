@@ -104,9 +104,18 @@ namespace Accessors
 
             if (request.Groupings.Count == 2)
             {
-                return GenerateDummyPieChartData(request);
+                // TODO: The pre-grouped data must be flat in order to group it easily
+                // For now, just hardcode each scenario since this is just a temp solution.
+                if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "Model")
+                {
+                    return GenerateDummyPieChartData(request);
+                }
+                else if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "PRM Device Status")
+                {
+                    return GenerateDummyVendorStatusData(request);
+                }
             }
-            
+
             if (request.Groupings.Count == 3)
             {
                 return GenerateDummyBarChartData(request);
@@ -114,6 +123,95 @@ namespace Accessors
 
             return null;
         }
+
+        public Dictionary<string, object> GenerateDummyVendorStatusData(RequestData request)
+        {
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            
+            foreach (var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+                List<string> models = kvp.Value;
+                Dictionary<string, int> currVendorByStatus = new Dictionary<string, int>(); // key: status, val: total
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+
+                foreach (string model in models)
+                {
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    foreach (var kvpStatus in statusDict)
+                    {
+                        string status = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != model)
+                        {
+                            continue;
+                        }
+
+                        int count = kvpStatus.Value;
+                        if (!currVendorByStatus.ContainsKey(status))
+                        {
+                            currVendorByStatus[status] = count;
+                        }
+                        else
+                        {
+                            currVendorByStatus[status] += count;
+                        }
+                    }
+                }
+
+                foreach(var kvpStatusCount in currVendorByStatus)
+                {
+                    dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Vendor",  vendor}, { "PRM Device Status", kvpStatusCount.Key}, { "count", kvpStatusCount.Value}
+                        });
+                }
+
+            }
+
+            retDict["data"] = dataList;
+            return retDict;
+        }
+
+        /*
+        // Attempt to use IEnumerable groupby to perform grouping
+        // Prob: cannot retrieve the original group objects if need to group by multiple fields (same prob as crossfilter, but we can use JSON.parse/stringify there)
+        public Dictionary<string, object> GenerateDummyVendorStatusData(RequestData request)
+        {
+            Dictionary<string, object> pregroupedData = GenerateDummyBarChartData(new RequestData() { RequestParams = new List<RequestParam>()});
+            var x = pregroupedData["data"];
+            List<Dictionary<string, object>> data = pregroupedData["data"] as List<Dictionary<string, object>>;
+            var groupedList = data.GroupBy(d => string.Format("{0}/{1}", d["Vendor"], d["PRM Device Status"]),
+                                            d=> Convert.ToInt32(d["count"]),
+                                            (vendor, counts) => new { 
+                                                X = vendor,
+                                                Count = counts.Sum(f => f)
+                                            });
+            foreach (var grp in groupedList)
+            {
+                var key = grp.X;
+            }
+
+            return null;
+        }
+        */
 
         private Dictionary<string, object> GenerateDataByVendor()
         {
@@ -135,12 +233,12 @@ namespace Accessors
                     {
                         total += kvpStatus.Value;
                     }
+                }
 
-                    dataList.Add(new Dictionary<string, object>()
+                dataList.Add(new Dictionary<string, object>()
                         {
                             {"Vendor",  vendor}, { "count", total}
                         });
-                }
             }
 
             retDict["data"] = dataList;
@@ -246,29 +344,7 @@ namespace Accessors
         }
 
         private Dictionary<string, object> GenerateDummyBarChartData(RequestData request)
-        {
-            /*
-            Dictionary<string, List<string>> VendorModels = new Dictionary<string, List<string>>()
-            {
-                {"Yokogawa", new List<string>() { "EJA", "EJX", "YTA"} },
-                {"Honeywell", new List<string>() { "HW001", "HW002", "HW003", "HW004" } },
-                {"Fisher Controls", new List<string>() { "FC001", "FC002", "FC003" } },
-            };
-
-            Dictionary<string, Dictionary<string, int>> modelStatusCount = new Dictionary<string, Dictionary<string, int>>()
-            {
-                {"EJA", new Dictionary<string, int>(){ { "Normal", 400 },  { "Error", 200 }, { "Warning", 100}, { "Communication Error", 10} } },
-                {"EJX", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 210 }, { "Warning", 110}, { "Communication Error", 20} } },
-                {"YTA", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 220 }, { "Warning", 120 }, { "Communication Error", 30} } },
-                {"HW001", new Dictionary<string, int>(){ { "Normal", 500 },  { "Error", 230 }, { "Warning", 130 }, { "Communication Error", 40} } },
-                {"HW002", new Dictionary<string, int>(){ { "Normal", 600 },  { "Error", 240 }, { "Warning", 140 }, { "Communication Error", 50} } },
-                {"HW003", new Dictionary<string, int>(){ { "Normal", 550 },  { "Error", 250 }, { "Warning", 150 }, { "Communication Error", 50} } },
-                {"HW004", new Dictionary<string, int>(){ { "Normal", 450 },  { "Error", 260 }, { "Warning", 160 }, { "Communication Error", 60} } },
-                {"FC001", new Dictionary<string, int>(){ { "Normal", 350 },  { "Error", 270 }, { "Warning", 170 }, { "Communication Error", 70} } },
-                {"FC002", new Dictionary<string, int>(){ { "Normal", 200 },  { "Error", 280 }, { "Warning", 180 }, { "Communication Error", 80} } },
-                {"FC003", new Dictionary<string, int>(){ { "Normal", 100 },  { "Error", 290 }, { "Warning", 190 }, { "Communication Error", 90} } },
-            };
-            */
+        {            
             Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
             Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
 
@@ -318,7 +394,10 @@ namespace Accessors
             return retDict;
         }
 
+        public IsaeDwAccessor()
+        {
 
+        }
         public IsaeDwAccessor(string serverName)
         {
             try
