@@ -97,15 +97,24 @@ namespace Accessors
 
         public Dictionary<string, object> queryData(RequestData request)
         {
+            // TODO: The pre-grouped data must be flat in order to group it easily
+            // For now, just hardcode each scenario since this is just a temp solution.
             if (request.Groupings.Count == 1)
             {
-                return GenerateDataByVendor();
+                //return GenerateDataByVendor(request);
+                if (request.Groupings[0] == "Vendor")
+                {
+                    //return GenerateDataFor1Group(request);
+                    return GenerateDataByVendor(request);
+                }
+                else
+                {
+                    return GenerateDataByModel(request);
+                }
             }
 
             if (request.Groupings.Count == 2)
             {
-                // TODO: The pre-grouped data must be flat in order to group it easily
-                // For now, just hardcode each scenario since this is just a temp solution.
                 if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "Model")
                 {
                     return GenerateDummyPieChartData(request);
@@ -119,6 +128,35 @@ namespace Accessors
             if (request.Groupings.Count == 3)
             {
                 return GenerateDummyBarChartData(request);
+            }
+
+            return null;
+        }
+
+        private string GetDataGroupKey(RequestData request, Dictionary<string, object> data)
+        {
+            List<string> vals = new List<string>();
+            foreach(var group in request.Groupings)
+            {
+                vals.Add(string.Format("{0}", data[group]));
+            }
+
+            return string.Join("/", vals);
+        }
+
+        public Dictionary<string, object> GenerateDataFor1Group(RequestData request)
+        {
+            Dictionary<string, object> pregroupedData = GenerateDummyBarChartData(new RequestData() { RequestParams = new List<RequestParam>() });
+            List<Dictionary<string, object>> data = pregroupedData["data"] as List<Dictionary<string, object>>;
+            var groupedList = data.GroupBy(d => GetDataGroupKey(request, d),
+                                            d => Convert.ToInt32(d["count"]),
+                                            (vendor, counts) => new {
+                                                X = vendor,
+                                                Count = counts.Sum(f => f)
+                                            });
+            foreach (var grp in groupedList)
+            {
+                var key = grp.X;
             }
 
             return null;
@@ -159,7 +197,7 @@ namespace Accessors
                         string status = kvpStatus.Key;
 
                         var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
-                        if (statusFilter != null && statusFilter.Value != model)
+                        if (statusFilter != null && statusFilter.Value != status)
                         {
                             continue;
                         }
@@ -213,7 +251,7 @@ namespace Accessors
         }
         */
 
-        private Dictionary<string, object> GenerateDataByVendor()
+        private Dictionary<string, object> GenerateDataByVendor(RequestData request)
         {
             Dictionary<string, object> retDict = new Dictionary<string, object>();
             Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
@@ -223,14 +261,35 @@ namespace Accessors
             foreach (var kvp in VendorModels)
             {
                 string vendor = kvp.Key;
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+
                 int total = 0;
                 List<string> models = kvp.Value;
                 foreach (string model in models)
                 {
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
                     Dictionary<string, int> statusDict = modelStatusCount[model];
                     
                     foreach (var kvpStatus in statusDict)
                     {
+                        string kpiStaus = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != kpiStaus)
+                        {
+                            continue;
+                        }
+
                         total += kvpStatus.Value;
                     }
                 }
@@ -239,6 +298,62 @@ namespace Accessors
                         {
                             {"Vendor",  vendor}, { "count", total}
                         });
+            }
+
+            retDict["data"] = dataList;
+
+            return retDict;
+        }
+
+        private Dictionary<string, object> GenerateDataByModel(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+            foreach (var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+
+                
+                List<string> models = kvp.Value;
+                foreach (string model in models)
+                {
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    int total = 0;
+                    foreach (var kvpStatus in statusDict)
+                    {
+                        string kpiStaus = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != kpiStaus)
+                        {
+                            continue;
+                        }
+
+                        total += kvpStatus.Value;
+                    }
+
+                    dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Model",  model}, { "count", total}
+                        });
+
+                }
+
             }
 
             retDict["data"] = dataList;
@@ -296,7 +411,7 @@ namespace Accessors
                         string kpiStaus = kvpStatus.Key;
 
                         var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
-                        if (statusFilter != null && statusFilter.Value != model)
+                        if (statusFilter != null && statusFilter.Value != kpiStaus)
                         {
                             continue;
                         }
@@ -376,7 +491,7 @@ namespace Accessors
                         string status = kvpStatus.Key;
 
                         var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
-                        if (statusFilter != null && statusFilter.Value != model)
+                        if (statusFilter != null && statusFilter.Value != status)
                         {
                             continue;
                         }
