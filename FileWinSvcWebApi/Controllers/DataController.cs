@@ -28,7 +28,8 @@ namespace IsaePrmDwApi.Controllers
         [HttpPost]
         public Dictionary<string, object> Post(RequestData requestData)
         {
-            IsaeDwAccessor accessor = new IsaeDwAccessor("192.168.56.130\\ISAESQLSERVER");
+            //IsaeDwAccessor accessor = new IsaeDwAccessor("192.168.56.130\\ISAESQLSERVER");
+            IsaeDwAccessor accessor = new IsaeDwAccessor();
             Console.WriteLine("Post");
             Dictionary<string, object> retDict = accessor.queryData(requestData);
             Thread.Sleep(300);

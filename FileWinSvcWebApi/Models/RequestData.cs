@@ -12,6 +12,8 @@ namespace IsaePrmDwApi.Models
 
         public List<string> Groupings { get; set; }
 
+        public List<string> Columns { get; set; }
+
         public string Granularity { get; set; }
 
         // Filters

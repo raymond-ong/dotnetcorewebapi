@@ -17,6 +17,8 @@ namespace IsaePrmDwApi.Models
         public short NumRows { get; set; }
 
         public short NumCols { get; set; }
+
+        public string PageFilterFields { get; set; }
         //public int Revision { get; set; }
 
     }

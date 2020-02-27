@@ -18,6 +18,7 @@ namespace Accessors
         private SqlConnection connection;
         private bool disposed = false;
 
+
         //private string getDimColumnsCsv(RequestData request, string prefix=null)
         //{
         //    if (request.Dimensions == null || request.Dimensions.Count == 0)
@@ -95,39 +96,134 @@ namespace Accessors
             return retList;
         }
 
+        public Dictionary<string, object> GetDeviceDetails(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            List<Dictionary<string, object>> retList = new List<Dictionary<string, object>>();
+            // Not a good design...anyways this is just a temp solution
+            // Ideal approach: bottom up (generate devices first and decide the props while generating)
+            // Current approach: decide the number of counts first per vendor/model/status, then generate the devices
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+            Dictionary<string, string> modelCommTypeLookup = GetModelCommTypeLookup();
+            Dictionary<string, string> modelCategoryLookup = GetModelCategoryLookup();
+            string[] priorities = new string[] { "Low", "Medium", "High", "High+" };
+            string[] plants = new string[] { "PRM001" };
+            string[] areas = new string[] { "Area001", "Area002", "Area003", "Area004" };
+            string[] units = new string[] { "Unit001", "Unit002", "Unit003", "Unit004", "Unit005", "Unit006", "Unit007", "Unit008" };
+
+            var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+            var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+            var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+
+            foreach (var kvpModelStatus in modelStatusCount)
+            {
+                string model = kvpModelStatus.Key;
+                string vendor = VendorModels.First(kvp => kvp.Value.Contains(model)).Key;
+                
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+                
+                if (modelFilter != null && modelFilter.Value != model)
+                {
+                    continue;
+                }
+
+                var statusCountDict = kvpModelStatus.Value;
+                foreach(var kvpStatusCount in statusCountDict)
+                {
+                    string statusName = kvpStatusCount.Key;
+                    int count = kvpStatusCount.Value;
+
+                    
+                    if (statusFilter != null && statusFilter.Value != statusName)
+                    {
+                        continue;
+                    }
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        Dictionary<string, object> item = new Dictionary<string, object>();
+
+                        AddItem(request.Columns, item, "DeviceId", $"DeviceId_{ i}");
+                        AddItem(request.Columns, item, "DeviceTag", $"DeviceTag_{i}");
+                        AddItem(request.Columns, item, "CommType", modelCommTypeLookup[model]);
+                        AddItem(request.Columns, item, "DevicePath", $"MYPJT-0101-10111-{i}");
+                        AddItem(request.Columns, item, "Category", modelCategoryLookup[model]);
+                        AddItem(request.Columns, item, "Priority", priorities[i % priorities.Length]);
+                        AddItem(request.Columns, item, "Vendor", vendor);
+                        AddItem(request.Columns, item, "Model", model);
+                        AddItem(request.Columns, item, "Revision", "1");
+                        AddItem(request.Columns, item, "Plant", plants[i % plants.Length]);
+                        AddItem(request.Columns, item, "Area", areas[i % areas.Length]);
+                        AddItem(request.Columns, item, "Unit", units[i % units.Length]);
+                        AddItem(request.Columns, item, "PRM Device Status", statusName);
+
+                        retList.Add(item);
+                    }
+                }
+            }
+
+            retDict["data"] = retList;
+            return retDict;
+        }
+
+        private void AddItem(List<string> columns, Dictionary<string, object> item, string key, object value)
+        {
+            if (!columns.Contains(key))
+            {
+                return;
+            }
+
+            item.Add(key, value);
+        }
+
         public Dictionary<string, object> queryData(RequestData request)
         {
-            // TODO: The pre-grouped data must be flat in order to group it easily
-            // For now, just hardcode each scenario since this is just a temp solution.
-            if (request.Groupings.Count == 1)
+            if (request.RequestType == "GetDeviceDetails")
             {
-                //return GenerateDataByVendor(request);
-                if (request.Groupings[0] == "Vendor")
-                {
-                    //return GenerateDataFor1Group(request);
-                    return GenerateDataByVendor(request);
-                }
-                else
-                {
-                    return GenerateDataByModel(request);
-                }
+                return GetDeviceDetails(request);
             }
-
-            if (request.Groupings.Count == 2)
+            else // GetDeviceCounts for now
             {
-                if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "Model")
+                // TODO: The pre-grouped data must be flat in order to group it easily
+                // For now, just hardcode each scenario since this is just a temp solution.
+                if (request.Groupings.Count == 1)
                 {
-                    return GenerateDummyPieChartData(request);
+                    //return GenerateDataByVendor(request);
+                    if (request.Groupings[0] == "Vendor")
+                    {
+                        //return GenerateDataFor1Group(request);
+                        return GenerateDataByVendor(request);
+                    }
+                    else
+                    {
+                        return GenerateDataByModel(request);
+                    }
                 }
-                else if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "PRM Device Status")
-                {
-                    return GenerateDummyVendorStatusData(request);
-                }
-            }
 
-            if (request.Groupings.Count == 3)
-            {
-                return GenerateDummyBarChartData(request);
+                if (request.Groupings.Count == 2)
+                {
+                    if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "Model")
+                    {
+                        return GenerateDummyPieChartData(request);
+                    }
+                    else if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "PRM Device Status")
+                    {
+                        return GenerateDummyVendorStatusData(request);
+                    }
+                    else if (request.Groupings[0] == "Model" && request.Groupings[1] == "PRM Device Status")
+                    {
+                        return GenerateDummyModelStatusData(request);
+                    }
+                }
+
+                if (request.Groupings.Count == 3)
+                {
+                    return GenerateDummyBarChartData(request);
+                }
             }
 
             return null;
@@ -162,6 +258,61 @@ namespace Accessors
             return null;
         }
 
+        public Dictionary<string, object> GenerateDummyModelStatusData(RequestData request)
+        {
+            Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
+            Dictionary<string, Dictionary<string, int>> modelStatusCount = GetSampleModelStatusCount();
+
+            List<Dictionary<string, object>> dataList = new List<Dictionary<string, object>>();
+
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+
+            foreach (var kvp in VendorModels)
+            {
+                string vendor = kvp.Key;
+                List<string> models = kvp.Value;                
+
+                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                if (vendorFilter != null && vendorFilter.Value != vendor)
+                {
+                    continue;
+                }
+
+                foreach (string model in models)
+                {
+                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    if (modelFilter != null && modelFilter.Value != model)
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, int> statusDict = modelStatusCount[model];
+                    foreach (var kvpStatus in statusDict)
+                    {
+                        string status = kvpStatus.Key;
+
+                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        if (statusFilter != null && statusFilter.Value != status)
+                        {
+                            continue;
+                        }
+
+                        int count = kvpStatus.Value;
+                        dataList.Add(new Dictionary<string, object>()
+                        {
+                            {"Model",  model}, { "PRM Device Status", status}, { "count", count}
+                        });
+                    }
+
+                }
+
+
+
+            }
+
+            retDict["data"] = dataList;
+            return retDict;
+        }
         public Dictionary<string, object> GenerateDummyVendorStatusData(RequestData request)
         {
             Dictionary<string, List<string>> VendorModels = GetSampleVendorModelData();
@@ -361,21 +512,21 @@ namespace Accessors
             return retDict;
         }
 
-        private Dictionary<string, object> GenerateDummyPieChartDataSimple()
-        {
-            Dictionary<string, object> retDict = new Dictionary<string, object>();
+        //private Dictionary<string, object> GenerateDummyPieChartDataSimple()
+        //{
+        //    Dictionary<string, object> retDict = new Dictionary<string, object>();
 
-            retDict["data"] = new List<Dictionary<string, object>>() {
-                new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "EJX" }, { "count", 100} },
-                new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "EJA" }, { "count", 200} },
-                new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "YTA" }, { "count", 300} },
-                new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW001" }, { "count", 400} },
-                new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW002" }, { "count", 150} },
-                new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW003" }, { "count", 250} },
-            };
+        //    retDict["data"] = new List<Dictionary<string, object>>() {
+        //        new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "EJX" }, { "count", 100} },
+        //        new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "EJA" }, { "count", 200} },
+        //        new Dictionary<string, object>() { { "Vendor", "Yokogawa" }, { "Model", "YTA" }, { "count", 300} },
+        //        new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW001" }, { "count", 400} },
+        //        new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW002" }, { "count", 150} },
+        //        new Dictionary<string, object>() { { "Vendor", "Honeywell" }, { "Model", "HW003" }, { "count", 250} },
+        //    };
 
-            return retDict;
-        }
+        //    return retDict;
+        //}
 
         private Dictionary<string, object> GenerateDummyPieChartData(RequestData request)
         {
@@ -445,16 +596,53 @@ namespace Accessors
         {
             return new Dictionary<string, Dictionary<string, int>>()
             {
-                {"EJA", new Dictionary<string, int>(){ { "Normal", 400 },  { "Error", 200 }, { "Warning", 100}, { "Communication Error", 10} } },
-                {"EJX", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 210 }, { "Warning", 110}, { "Communication Error", 20} } },
-                {"YTA", new Dictionary<string, int>(){ { "Normal", 300 },  { "Error", 220 }, { "Warning", 120 }, { "Communication Error", 30} } },
-                {"HW001", new Dictionary<string, int>(){ { "Normal", 500 },  { "Error", 230 }, { "Warning", 130 }, { "Communication Error", 40} } },
-                {"HW002", new Dictionary<string, int>(){ { "Normal", 600 },  { "Error", 240 }, { "Warning", 140 }, { "Communication Error", 50} } },
-                {"HW003", new Dictionary<string, int>(){ { "Normal", 550 },  { "Error", 250 }, { "Warning", 150 }, { "Communication Error", 50} } },
-                {"HW004", new Dictionary<string, int>(){ { "Normal", 450 },  { "Error", 260 }, { "Warning", 160 }, { "Communication Error", 60} } },
-                {"FC001", new Dictionary<string, int>(){ { "Normal", 350 },  { "Error", 270 }, { "Warning", 170 }, { "Communication Error", 70} } },
-                {"FC002", new Dictionary<string, int>(){ { "Normal", 200 },  { "Error", 280 }, { "Warning", 180 }, { "Communication Error", 80} } },
-                {"FC003", new Dictionary<string, int>(){ { "Normal", 100 },  { "Error", 290 }, { "Warning", 190 }, { "Communication Error", 90} } },
+                {"EJA", new Dictionary<string, int>(){ { "Normal", 40 },  { "Error", 20 }, { "Warning", 10}, { "Communication Error", 1} } },
+                {"EJX", new Dictionary<string, int>(){ { "Normal", 30 },  { "Error", 21 }, { "Warning", 11}, { "Communication Error", 2} } },
+                {"YTA", new Dictionary<string, int>(){ { "Normal", 30 },  { "Error", 22 }, { "Warning", 12 }, { "Communication Error", 3} } },
+                {"HW001", new Dictionary<string, int>(){ { "Normal", 50 },  { "Error", 23 }, { "Warning", 13 }, { "Communication Error", 4} } },
+                {"HW002", new Dictionary<string, int>(){ { "Normal", 60 },  { "Error", 24 }, { "Warning", 14 }, { "Communication Error", 5} } },
+                {"HW003", new Dictionary<string, int>(){ { "Normal", 55 },  { "Error", 25 }, { "Warning", 15 }, { "Communication Error", 5} } },
+                {"HW004", new Dictionary<string, int>(){ { "Normal", 45 },  { "Error", 26 }, { "Warning", 16 }, { "Communication Error", 6} } },
+                {"FC001", new Dictionary<string, int>(){ { "Normal", 35 },  { "Error", 27 }, { "Warning", 17 }, { "Communication Error", 7} } },
+                {"FC002", new Dictionary<string, int>(){ { "Normal", 20 },  { "Error", 28 }, { "Warning", 18 }, { "Communication Error", 8} } },
+                {"FC003", new Dictionary<string, int>(){ { "Normal", 10 },  { "Error", 29 }, { "Warning", 19 }, { "Communication Error", 9} } },
+            };
+        }
+
+        // For now, assume CommType is tied up to the model
+        // I think CommType depends on the Device Path (which FCS the device it's currently connected to)
+        // A device can support multiple CommTypes based on some product brochures
+        private Dictionary<string, string> GetModelCommTypeLookup()
+        {
+            return new Dictionary<string, string>()
+            {
+                {"EJA", "HART" },
+                {"EJX",  "FF-H1" },
+                {"YTA", "FF-H1" },
+                {"HW001", "HART" },
+                {"HW002", "FF-H1" },
+                {"HW003", "FF-H1" },
+                {"HW004", "ISA100" },
+                {"FC001", "FF-H1" },
+                {"FC002", "ISA100" },
+                {"FC003", "Profibus" },
+            };
+        }
+
+        private Dictionary<string, string> GetModelCategoryLookup()
+        {
+            return new Dictionary<string, string>()
+            {
+                {"EJA", "Device" },
+                {"EJX",  "Valve" },
+                {"YTA", "Pressure Transmitter" },
+                {"HW001", "Valve" },
+                {"HW002", "Valve" },
+                {"HW003", "Pump" },
+                {"HW004", "Rotating Equipment" },
+                {"FC001", "Pump" },
+                {"FC002", "Valve" },
+                {"FC003", "Valve" },
             };
         }
 
