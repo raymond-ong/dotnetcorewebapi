@@ -186,6 +186,10 @@ namespace Accessors
             {
                 return GetDeviceDetails(request);
             }
+            else if (request.RequestType == "GetPlantKpi")
+            {
+                return GetDummyImageMapData(request);
+            }
             else // GetDeviceCounts for now
             {
                 // TODO: The pre-grouped data must be flat in order to group it easily
@@ -227,6 +231,50 @@ namespace Accessors
             }
 
             return null;
+        }
+
+        private Dictionary<string, object> GetDummyImageMapData(RequestData request)
+        {
+            Dictionary<string, double> lookupKpis = new Dictionary<string, double>()
+            {
+                {"North America", 89.5 },
+                {"South America", 95.5 },
+                {"China", 91.5 },
+                {"Japan", 90.5 },
+                {"Middle East", 89.5 },
+            };
+
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            List<Dictionary<string, object>> retList = new List<Dictionary<string, object>>();
+            retDict["data"] = retList;
+            var hotspotsQ = request.RequestParams.Find(x => x.Name == "Hotspots");
+            if (hotspotsQ == null)
+            {
+                return retDict;
+            }
+
+            foreach (var hotspot in hotspotsQ.Values)
+            {
+                foreach (var col in request.Columns)
+                {
+                    if (lookupKpis.ContainsKey(hotspot))
+                    {
+                        retList.Add(new Dictionary<string, object>() {
+                            { "name", hotspot },
+                            { col, lookupKpis[hotspot]}
+                        });
+                    }
+                    else
+                    {
+                        retList.Add(new Dictionary<string, object>() {
+                            { "name", hotspot },
+                            { col, 0.0}
+                        });
+                    }
+                }
+            }
+
+            return retDict;
         }
 
         private string GetDataGroupKey(RequestData request, Dictionary<string, object> data)
