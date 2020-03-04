@@ -186,6 +186,10 @@ namespace Accessors
             {
                 return GetDeviceDetails(request);
             }
+            else if (request.RequestType == "GetComments")
+            {
+                return GetAlarmComments(request);
+            }
             else if (request.RequestType == "GetPlantKpi")
             {
                 return GetDummyImageMapData(request);
@@ -231,6 +235,16 @@ namespace Accessors
             }
 
             return null;
+        }
+
+        private Dictionary<string, object> GetAlarmComments(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            string firstRequestValue = request.RequestParams.Count > 0 ? request.RequestParams[0].Value : "";
+
+            retDict["data"] = new List<string>() { string.Format("[{0} - Alarm Detail]\r\n-    The device of sensor 2 related condition is in Failure.\r\n\r\n[Possible cause]\r\n-    There is a breakage in sensor 2, or sensor 2 is disconnected from the terminals. It might affect the whole plant operation.....", 
+                firstRequestValue) };
+            return retDict;
         }
 
         private Dictionary<string, object> GetDummyImageMapData(RequestData request)
