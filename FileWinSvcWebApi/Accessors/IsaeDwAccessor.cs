@@ -112,9 +112,9 @@ namespace Accessors
             string[] areas = new string[] { "Area001", "Area002", "Area003", "Area004" };
             string[] units = new string[] { "Unit001", "Unit002", "Unit003", "Unit004", "Unit005", "Unit006", "Unit007", "Unit008" };
 
-            var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
-            var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
-            var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+            var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
+            var modelFilter = request.Parameters.Find(r => r.Name == "Model");
+            var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
 
             foreach (var kvpModelStatus in modelStatusCount)
             {
@@ -147,10 +147,10 @@ namespace Accessors
                     {
                         Dictionary<string, object> item = new Dictionary<string, object>();
 
-                        AddItem(request.Columns, item, "DeviceId", $"DeviceId_{ i}");
-                        AddItem(request.Columns, item, "DeviceTag", $"DeviceTag_{i}");
-                        AddItem(request.Columns, item, "CommType", modelCommTypeLookup[model]);
-                        AddItem(request.Columns, item, "DevicePath", $"MYPJT-0101-10111-{i}");
+                        AddItem(request.Columns, item, "Device_Id", $"DeviceId_{ i}");
+                        AddItem(request.Columns, item, "Device_Tag", $"DeviceTag_{i}");
+                        AddItem(request.Columns, item, "Comm_Type", modelCommTypeLookup[model]);
+                        AddItem(request.Columns, item, "Device_Path", $"MYPJT-0101-10111-{i}");
                         AddItem(request.Columns, item, "Category", modelCategoryLookup[model]);
                         AddItem(request.Columns, item, "Priority", priorities[i % priorities.Length]);
                         AddItem(request.Columns, item, "Vendor", vendor);
@@ -182,7 +182,8 @@ namespace Accessors
 
         public Dictionary<string, object> queryData(RequestData request)
         {
-            if (request.RequestType == "GetDeviceDetails")
+            //if (request.RequestType == "GetDeviceDetails")
+            if (request.RequestType == "GetDeviceList")
             {
                 return GetDeviceDetails(request);
             }
@@ -190,22 +191,46 @@ namespace Accessors
             {
                 return GetAlarmComments(request);
             }
-            else if (request.RequestType == "GetPlantKpi")
+            else if (request.RequestType == "GetPlantKpi") // I think not used anymore
             {
                 return GetDummyImageMapData(request);
+            }
+            else if (request.RequestType == "GetKpi") // For the Org -> Site -> Plant etc. dummy values
+            {
+                return GetDummyKpiData(request);
             }
             else if (request.RequestType == "GetAlarmOccurrenceRatio")
             {
                 return GetDummyAlarmOccurrenceRatio(request);
             }
+            else if (request.RequestType == "GetAlarmTypeRateFrequencyWithLatestStatus")
+            {
+                return GetDummyAlarmTypeFrequencyWithLatestStatus(request);
+            }
+            else if (request.RequestType == "GetAlarmRateFrequencyWithLatestStatus")
+            {
+                return GetDummyAlarmRateFrequencyWithLatestStatus(request);
+            }
+            else if (request.RequestType == "GetAchievement")
+            {
+                return GetDummyAchievement(request);
+            }
+            else if (request.RequestType == "GetPlantInfo")
+            {
+                return GetDummyPlantInfo(request);
+            }
+            else if (request.RequestType == "GetAlarmTypeCounts")
+            {
+                return GetDummyAlarmTypeCounts(request);
+            }
             else // GetDeviceCounts for now
             {
                 // TODO: The pre-grouped data must be flat in order to group it easily
                 // For now, just hardcode each scenario since this is just a temp solution.
-                if (request.Groupings.Count == 1)
+                if (request.Grouping.Count == 1)
                 {
                     //return GenerateDataByVendor(request);
-                    if (request.Groupings[0] == "Vendor")
+                    if (request.Grouping[0] == "Vendor")
                     {
                         //return GenerateDataFor1Group(request);
                         return GenerateDataByVendor(request);
@@ -216,23 +241,23 @@ namespace Accessors
                     }
                 }
 
-                if (request.Groupings.Count == 2)
+                if (request.Grouping.Count == 2)
                 {
-                    if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "Model")
+                    if (request.Grouping[0] == "Vendor" && request.Grouping[1] == "Model")
                     {
                         return GenerateDummyPieChartData(request);
                     }
-                    else if (request.Groupings[0] == "Vendor" && request.Groupings[1] == "PRM Device Status")
+                    else if (request.Grouping[0] == "Vendor" && request.Grouping[1] == "PRM Device Status")
                     {
                         return GenerateDummyVendorStatusData(request);
                     }
-                    else if (request.Groupings[0] == "Model" && request.Groupings[1] == "PRM Device Status")
+                    else if (request.Grouping[0] == "Model" && request.Grouping[1] == "PRM Device Status")
                     {
                         return GenerateDummyModelStatusData(request);
                     }
                 }
 
-                if (request.Groupings.Count == 3)
+                if (request.Grouping.Count == 3)
                 {
                     return GenerateDummyBarChartData(request);
                 }
@@ -241,21 +266,178 @@ namespace Accessors
             return null;
         }
 
-        private Dictionary<string, object> GetDummyAlarmOccurrenceRatio(RequestData request)
+        private Dictionary<string, object> GetDummyPlantInfo(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() { { "Plant", "TPU" }, { "PRM Name", "STN0001" }, { "PRM Revision", "R3.31.00"}, { "Database Backup Date", "2018-09-05" } },
+            };
+            return retDict;
+        }
+
+        private Dictionary<string, object> GetDummyAchievement(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            var queryPhase = request.Parameters.Find(p => p.Name == "Phase");
+            int phase = queryPhase != null && queryPhase.Value == "1" ? 1 : 2;
+            if (phase == 1)
+            {
+                retDict["data"] = new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>() { { "Achievement", "Device is normal." }, { "KPI %", "7.74" }, { "Count", "63 devices"}, { "Threshold", "<=5 %" }, {"Result", "Fail"}, {"Action", "C / Y / N"} },
+                    new Dictionary<string, object>() { { "Achievement", "No Response from Device. (D642)" }, { "KPI %", "1.35" }, { "Count", "11 devices"}, { "Threshold", "<=5 %" }, {"Result", "Pass"}, {"Action", "C / Y / N"} },
+                };
+            }
+            else
+            {
+                retDict["data"] = new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>() { { "Achievement", "Failure" }, { "KPI %", "2.74" }, { "Count", "63 devices"}, { "Threshold", "<=5 %" }, {"Result", "Fail"}, {"Action", "C / Y / N"} },
+                    new Dictionary<string, object>() { { "Achievement", "Ou t of Specification" }, { "KPI %", "2.35" }, { "Count", "11 devices"}, { "Threshold", "<=5 %" }, {"Result", "Pass"}, {"Action", "C / Y / N"} },
+                };
+            }
+            return retDict;
+        }
+
+        private Dictionary<string, object> GetDummyKpiData(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            var queryPhase = request.Parameters.Find(p => p.Name == "Phase");
+            if (queryPhase != null && queryPhase.Value == "1")
+            {
+                retDict["data"] = new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>() { { "Organization", "Company A Petrochemical" }, { "Site", "Qatar" }, { "Plant", "SP"}, { "Phase", "2" }, {"value", "48.28"} },
+                    new Dictionary<string, object>() { { "Organization", "Company B Petrochemical" }, { "Site", "China" }, { "Plant", "BP"}, { "Phase", "1" }, {"value", "28.28"} },
+                    new Dictionary<string, object>() { { "Organization", "Company C Petrochemical" }, { "Site", "Japan" }, { "Plant", "CP"}, { "Phase", "3" }, {"value", "78.28"} },
+                };
+            }
+            else if (queryPhase != null && queryPhase.Value == "2")
+            {
+                retDict["data"] = new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>() { { "Organization", "Company A Petrochemical" }, { "Site", "Qatar" }, { "Plant", "SP"}, { "Phase", "2" }, {"value", "75.5"} },
+                    new Dictionary<string, object>() { { "Organization", "Company B Petrochemical" }, { "Site", "China" }, { "Plant", "BP"}, { "Phase", "1" }, {"value", "28.28"} },
+                    new Dictionary<string, object>() { { "Organization", "Company C Petrochemical" }, { "Site", "Japan" }, { "Plant", "CP"}, { "Phase", "3" }, {"value", "78.28"} },
+                };
+            }
+            else
+            {
+                retDict["data"] = new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>() { { "Organization", "Company A Petrochemical" }, { "Site", "Qatar" }, { "Plant", "SP"}, { "Phase", "2" }, {"value", "92.28"} },
+                    new Dictionary<string, object>() { { "Organization", "Company B Petrochemical" }, { "Site", "China" }, { "Plant", "BP"}, { "Phase", "1" }, {"value", "28.28"} },
+                    new Dictionary<string, object>() { { "Organization", "Company C Petrochemical" }, { "Site", "Japan" }, { "Plant", "CP"}, { "Phase", "3" }, {"value", "78.28"} },
+                };
+            }
+            return retDict;
+        }
+
+        private Dictionary<string, object> GetDummyAlarmRateFrequencyWithLatestStatus(RequestData request)
+        {
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() {
+                                                    { "Device_Id", "30000603"},
+                                                    { "Device_Tag", "Tag000266" },
+                                                    { "Comm_Type", "HART"},
+                                                    { "Model", "EJA"},
+                                                    { "Rate(%)", "49.06"},
+                                                    { "Frequency", "4"},
+                                                },
+                 new Dictionary<string, object>() {
+                                                    { "Device_Id", "30001074"},
+                                                    { "Device_Tag", "Tag000737" },
+                                                    { "Comm_Type", "HART"},
+                                                    { "Model", "EJX"},
+                                                    { "Rate(%)", "47.18"},
+                                                    { "Frequency", "1"},
+                                                }
+            };
+            return retDict;
+        }
+
+        private Dictionary<string, object> GetDummyAlarmTypeFrequencyWithLatestStatus(RequestData request)
+        {
+            string alarmType = null; // wait...not needed
+            var queryAlarm = request.Parameters.Find(p => p.Name == "Alarm Type");
+            if (queryAlarm != null)
+            {
+                alarmType = queryAlarm.Name;
+            }
+
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() {
+                                                    { "Device_Id", "30001050"},
+                                                    { "Device_Tag", "Tag000713" },
+                                                    { "Comm_Type", "HART"},
+                                                    { "Model", "EJX"},
+                                                    { "Rate(%)", "0.03"},
+                                                    { "Frequency", "1"},
+                                                },
+                 new Dictionary<string, object>() {
+                                                    { "Device_Id", "30000589"},
+                                                    { "Device_Tag", "Tag000252" },
+                                                    { "Comm_Type", "HART"},
+                                                    { "Model", "1000_IS"},
+                                                    { "Rate(%)", "0.33"},
+                                                    { "Frequency", "4"},
+                                                }
+            };
+            return retDict;
+        }
+
+        private Dictionary<string, object> GetDummyAlarmTypeCounts(RequestData request)
         {
             DateTime Jan1 = new DateTime(2020, 1, 1);
             Dictionary<string, object> retDict = new Dictionary<string, object>();
             retDict["data"] = new List<Dictionary<string, object>>()
             {
-                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Message", "Sensor 2 Failure"}, { "value", 5.5} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1)}, { "Alarm Message", "Sensor 2 Failure"}, { "value", 7.6} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 15.7} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 4.8} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(4) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 7.8} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(5) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 6.8} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(6) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 5.8} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(7) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 9.8} },
-                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(8) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 10.8} },
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Type", "Normal"}, { "value", 100} },
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Type", "High Risk (Phase 2)"}, { "value", 200} },
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Type", "Non-Visualized (Phase 1)"}, { "value", 300} },
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Type", "N/A (Phase 1)"}, { "value", 400} },
+
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1) }, { "Alarm Type", "Normal"}, { "value", 110} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1) }, { "Alarm Type", "High Risk (Phase 2)"}, { "value", 210} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1) }, { "Alarm Type", "Non-Visualized (Phase 1)"}, { "value", 310} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1) }, { "Alarm Type", "N/A (Phase 1)"}, { "value", 410} },
+
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Type", "Normal"}, { "value", 120} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Type", "High Risk (Phase 2)"}, { "value", 220} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Type", "Non-Visualized (Phase 1)"}, { "value", 320} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Type", "N/A (Phase 1)"}, { "value", 420} },
+
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Type", "Normal"}, { "value", 130} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Type", "High Risk (Phase 2)"}, { "value", 230} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Type", "Non-Visualized (Phase 1)"}, { "value", 330} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Type", "N/A (Phase 1)"}, { "value", 430} },
+            };
+            return retDict;        
+        }
+
+        private Dictionary<string, object> GetDummyAlarmOccurrenceRatio(RequestData request)
+        {
+            Random random = new Random();
+            var queryAlarm = request.Parameters.Find(p => p.Name == "Alarm");
+            string alarmName = queryAlarm != null ? queryAlarm.Value : "Communication Error";
+            DateTime Jan1 = new DateTime(2020, 1, 1);
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Type", alarmName }, { "value", random.Next(0, 100)} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1)}, { "Alarm Type", alarmName }, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(4) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(5) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(6) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(7) }, { "Alarm Type", alarmName}, { "value", random.Next(0, 100) } },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(8) }, { "Alarm Type", alarmName }, { "value", random.Next(0, 100) } },
             };
             return retDict;
         }
@@ -263,10 +445,19 @@ namespace Accessors
         private Dictionary<string, object> GetAlarmComments(RequestData request)
         {
             Dictionary<string, object> retDict = new Dictionary<string, object>();
-            string firstRequestValue = request.RequestParams.Count > 0 ? request.RequestParams[0].Value : "";
+            string firstRequestValue = request.Parameters.Count > 0 ? request.Parameters[0].Value : "";
 
-            retDict["data"] = new List<string>() { string.Format("[{0} - Alarm Detail]\r\n-    The device of sensor 2 related condition is in Failure.\r\n\r\n[Possible cause]\r\n-    There is a breakage in sensor 2, or sensor 2 is disconnected from the terminals. It might affect the whole plant operation.....", 
-                firstRequestValue) };
+            //retDict["data"] = new List<string>() { string.Format("[{0} - Alarm Detail]\r\n-    The device of sensor 2 related condition is in Failure.\r\n\r\n[Possible cause]\r\n-    There is a breakage in sensor 2, or sensor 2 is disconnected from the terminals. It might affect the whole plant operation.....", 
+            //    firstRequestValue) };
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() {{"Alarm detail", "The device of sensor 2 related condition is in Failure" },
+                                                    { "Possible cause", "There is a breakage in sensor 2, or sensor 2 is disconnected from the terminals. It might affect the whole plant operation." },
+                                                    { "Alarm riskAlarm risk", "Unable to measure sensor 2 related value correctly." },
+                                                    { "Recommended action", "Verify the Sensor 2 Instrument process is within the Sensor range and/or confirm sensor configuration and wiring. Consult with Yokogawa or the device vendor how to recover." }
+                                                    }
+            };
+            //retDict["data"] = new List<string>() { "Test Comment" };
             return retDict;
         }
 
@@ -284,7 +475,7 @@ namespace Accessors
             Dictionary<string, object> retDict = new Dictionary<string, object>();
             List<Dictionary<string, object>> retList = new List<Dictionary<string, object>>();
             retDict["data"] = retList;
-            var hotspotsQ = request.RequestParams.Find(x => x.Name == "Hotspots");
+            var hotspotsQ = request.Parameters.Find(x => x.Name == "Hotspots");
             if (hotspotsQ == null)
             {
                 return retDict;
@@ -317,7 +508,7 @@ namespace Accessors
         private string GetDataGroupKey(RequestData request, Dictionary<string, object> data)
         {
             List<string> vals = new List<string>();
-            foreach(var group in request.Groupings)
+            foreach(var group in request.Grouping)
             {
                 vals.Add(string.Format("{0}", data[group]));
             }
@@ -327,7 +518,7 @@ namespace Accessors
 
         public Dictionary<string, object> GenerateDataFor1Group(RequestData request)
         {
-            Dictionary<string, object> pregroupedData = GenerateDummyBarChartData(new RequestData() { RequestParams = new List<RequestParam>() });
+            Dictionary<string, object> pregroupedData = GenerateDummyBarChartData(new RequestData() { Parameters = new List<RequestParam>() });
             List<Dictionary<string, object>> data = pregroupedData["data"] as List<Dictionary<string, object>>;
             var groupedList = data.GroupBy(d => GetDataGroupKey(request, d),
                                             d => Convert.ToInt32(d["count"]),
@@ -357,7 +548,7 @@ namespace Accessors
                 string vendor = kvp.Key;
                 List<string> models = kvp.Value;                
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -365,7 +556,7 @@ namespace Accessors
 
                 foreach (string model in models)
                 {
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -376,7 +567,7 @@ namespace Accessors
                     {
                         string status = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != status)
                         {
                             continue;
@@ -385,7 +576,7 @@ namespace Accessors
                         int count = kvpStatus.Value;
                         dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Model",  model}, { "PRM Device Status", status}, { "count", count}
+                            {"Model",  model}, { "PRM Device Status", status}, { "value", count}
                         });
                     }
 
@@ -413,7 +604,7 @@ namespace Accessors
                 List<string> models = kvp.Value;
                 Dictionary<string, int> currVendorByStatus = new Dictionary<string, int>(); // key: status, val: total
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -421,7 +612,7 @@ namespace Accessors
 
                 foreach (string model in models)
                 {
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -432,7 +623,7 @@ namespace Accessors
                     {
                         string status = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != status)
                         {
                             continue;
@@ -454,7 +645,7 @@ namespace Accessors
                 {
                     dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Vendor",  vendor}, { "PRM Device Status", kvpStatusCount.Key}, { "count", kvpStatusCount.Value}
+                            {"Vendor",  vendor}, { "PRM Device Status", kvpStatusCount.Key}, { "value", kvpStatusCount.Value}
                         });
                 }
 
@@ -498,7 +689,7 @@ namespace Accessors
             {
                 string vendor = kvp.Key;
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -508,7 +699,7 @@ namespace Accessors
                 List<string> models = kvp.Value;
                 foreach (string model in models)
                 {
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -520,7 +711,7 @@ namespace Accessors
                     {
                         string kpiStaus = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != kpiStaus)
                         {
                             continue;
@@ -532,7 +723,7 @@ namespace Accessors
 
                 dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Vendor",  vendor}, { "count", total}
+                            {"Vendor",  vendor}, { "value", total}
                         });
             }
 
@@ -552,7 +743,7 @@ namespace Accessors
             {
                 string vendor = kvp.Key;
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -562,7 +753,7 @@ namespace Accessors
                 List<string> models = kvp.Value;
                 foreach (string model in models)
                 {
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -574,7 +765,7 @@ namespace Accessors
                     {
                         string kpiStaus = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != kpiStaus)
                         {
                             continue;
@@ -585,7 +776,7 @@ namespace Accessors
 
                     dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Model",  model}, { "count", total}
+                            {"Model",  model}, { "value", total}
                         });
 
                 }
@@ -625,7 +816,7 @@ namespace Accessors
                 string vendor = kvp.Key;
                 List<string> models = kvp.Value;
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -636,7 +827,7 @@ namespace Accessors
                     Dictionary<string, int> statusDict = modelStatusCount[model];
                     int total = 0;
 
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -646,7 +837,7 @@ namespace Accessors
                     {
                         string kpiStaus = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != kpiStaus)
                         {
                             continue;
@@ -657,7 +848,7 @@ namespace Accessors
 
                     dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Vendor",  vendor}, {"Model", model}, { "count", total}
+                            {"Vendor",  vendor}, {"Model", model}, { "value", total}
                         });
                 }
             }
@@ -744,7 +935,7 @@ namespace Accessors
                 string vendor = kvp.Key;
                 List<string> models = kvp.Value;
 
-                var vendorFilter = request.RequestParams.Find(r => r.Name == "Vendor");
+                var vendorFilter = request.Parameters.Find(r => r.Name == "Vendor");
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
@@ -752,7 +943,7 @@ namespace Accessors
 
                 foreach (string model in models)
                 {
-                    var modelFilter = request.RequestParams.Find(r => r.Name == "Model");
+                    var modelFilter = request.Parameters.Find(r => r.Name == "Model");
                     if (modelFilter != null && modelFilter.Value != model)
                     {
                         continue;
@@ -763,7 +954,7 @@ namespace Accessors
                     {
                         string status = kvpStatus.Key;
 
-                        var statusFilter = request.RequestParams.Find(r => r.Name == "PRM Device Status");
+                        var statusFilter = request.Parameters.Find(r => r.Name == "PRM Device Status");
                         if (statusFilter != null && statusFilter.Value != status)
                         {
                             continue;
@@ -772,7 +963,7 @@ namespace Accessors
                         int count = kvpStatus.Value;
                         dataList.Add(new Dictionary<string, object>()
                         {
-                            {"Vendor",  vendor}, {"Model", model}, { "PRM Device Status", status}, { "count", count}
+                            {"Vendor",  vendor}, {"Model", model}, { "PRM Device Status", status}, { "value", count}
                         });
                     }
                 }

@@ -10,7 +10,7 @@ namespace ConsoleApp1
         static void Main(string[] args)
         {
             IsaeDwAccessor accessor = new IsaeDwAccessor();
-            accessor.GenerateDummyVendorStatusData(new RequestData() { RequestParams  = new List<RequestParam>()});
+            accessor.GenerateDummyVendorStatusData(new RequestData() { Parameters  = new List<RequestParam>()});
         }
     }
 }

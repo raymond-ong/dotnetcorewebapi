@@ -10,14 +10,14 @@ namespace IsaePrmDwApi.Models
     {
         public string RequestType { get; set; }
 
-        public List<string> Groupings { get; set; }
+        public List<string> Grouping { get; set; }
 
         public List<string> Columns { get; set; }
 
         public string Granularity { get; set; }
 
         // Filters
-        public List<RequestParam> RequestParams { get; set; }
+        public List<RequestParam> Parameters { get; set; }
 
         // For pagination
         public int startIndex { get; set; }
