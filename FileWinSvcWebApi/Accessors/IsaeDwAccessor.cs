@@ -35,19 +35,19 @@ namespace Accessors
 
         //internal List<ResultData> queryDataOld(RequestData request)
         //{
-            //string paramDimensionColumns = getDimColumnsCsv(request);
-            //string paramKpiColumns = getDimColumnsCsv(request, null);
+        //string paramDimensionColumns = getDimColumnsCsv(request);
+        //string paramKpiColumns = getDimColumnsCsv(request, null);
 
-            //string sqlQuery = @"DECLARE  @LatestCollectionKey INT = (select top 1 CollectionDateKey from FactDataCollection order by CollectionDateKey desc);" +
-            //                "select d.HierarchyPath ,d.KpiStatus, d.KpiStatusValue, d.KpiValue," +
-            //                $"{ }" + 
-            //                "k.Name as KpiName, " +
-            //                "kg.Name as KpiGroupName " +
-            //                "JOIN DimHierarchy h ON h.Fullpath = d.HierarchyPath " +
-            //                "where d.CollectionDateKey = @LatestCollectionKey " +
-            //                "AND h.CollectionDateKey = @LatestCollectionKey " +
-            //                "AND h.";
-            //throw new NotImplementedException();
+        //string sqlQuery = @"DECLARE  @LatestCollectionKey INT = (select top 1 CollectionDateKey from FactDataCollection order by CollectionDateKey desc);" +
+        //                "select d.HierarchyPath ,d.KpiStatus, d.KpiStatusValue, d.KpiValue," +
+        //                $"{ }" + 
+        //                "k.Name as KpiName, " +
+        //                "kg.Name as KpiGroupName " +
+        //                "JOIN DimHierarchy h ON h.Fullpath = d.HierarchyPath " +
+        //                "where d.CollectionDateKey = @LatestCollectionKey " +
+        //                "AND h.CollectionDateKey = @LatestCollectionKey " +
+        //                "AND h.";
+        //throw new NotImplementedException();
         //}
 
         public List<Dictionary<string, object>> queryDataOld2()
@@ -85,7 +85,7 @@ namespace Accessors
                             // 2. In the actual API, the first letter is changed to lowercase (e.g. "Plant" becomes "plant")
                             { "PlantHierarchy", new {Plant="Plant1", SiteX="Site1", Area="Areal", Unit="Unit1"} },
                             // Option 2: Using Dictionary (this is better)
-                            { "NetworkHierarchy", new Dictionary<string, object>() { {"FCS", "FCS01" }, { "Node", "Node01"}, { "Slot", "Slot01"} } },                            
+                            { "NetworkHierarchy", new Dictionary<string, object>() { {"FCS", "FCS01" }, { "Node", "Node01"}, { "Slot", "Slot01"} } },
                         };
 
                         retList.Add(item);
@@ -120,24 +120,24 @@ namespace Accessors
             {
                 string model = kvpModelStatus.Key;
                 string vendor = VendorModels.First(kvp => kvp.Value.Contains(model)).Key;
-                
+
                 if (vendorFilter != null && vendorFilter.Value != vendor)
                 {
                     continue;
                 }
-                
+
                 if (modelFilter != null && modelFilter.Value != model)
                 {
                     continue;
                 }
 
                 var statusCountDict = kvpModelStatus.Value;
-                foreach(var kvpStatusCount in statusCountDict)
+                foreach (var kvpStatusCount in statusCountDict)
                 {
                     string statusName = kvpStatusCount.Key;
                     int count = kvpStatusCount.Value;
 
-                    
+
                     if (statusFilter != null && statusFilter.Value != statusName)
                     {
                         continue;
@@ -194,6 +194,10 @@ namespace Accessors
             {
                 return GetDummyImageMapData(request);
             }
+            else if (request.RequestType == "GetAlarmOccurrenceRatio")
+            {
+                return GetDummyAlarmOccurrenceRatio(request);
+            }
             else // GetDeviceCounts for now
             {
                 // TODO: The pre-grouped data must be flat in order to group it easily
@@ -235,6 +239,25 @@ namespace Accessors
             }
 
             return null;
+        }
+
+        private Dictionary<string, object> GetDummyAlarmOccurrenceRatio(RequestData request)
+        {
+            DateTime Jan1 = new DateTime(2020, 1, 1);
+            Dictionary<string, object> retDict = new Dictionary<string, object>();
+            retDict["data"] = new List<Dictionary<string, object>>()
+            {
+                new Dictionary<string, object>() { {"Day", Jan1}, { "Alarm Message", "Sensor 2 Failure"}, { "value", 5.5} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(1)}, { "Alarm Message", "Sensor 2 Failure"}, { "value", 7.6} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(2) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 15.7} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(3) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 4.8} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(4) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 7.8} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(5) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 6.8} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(6) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 5.8} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(7) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 9.8} },
+                new Dictionary<string, object>() { {"Day", Jan1.AddMonths(8) }, { "Alarm Message", "Sensor 2 Failure"}, { "value", 10.8} },
+            };
+            return retDict;
         }
 
         private Dictionary<string, object> GetAlarmComments(RequestData request)
